@@ -17,6 +17,7 @@ while (true)
     Console.WriteLine("5 - Kayit Sil");
     Console.WriteLine("6 - Kayit Guncelle");
     Console.WriteLine("7 - Aylik Islem Filtreleme");
+    Console.WriteLine("8 - Verileri Excel (CSV) Olarak Disa Aktar");
     Console.WriteLine("0 - Cikis");
     Console.WriteLine("-----------------------------------------");
     Console.Write("Seciminiz: ");
@@ -49,6 +50,10 @@ while (true)
     else if (secim == "7")
     {
         AylikFiltrele(baglantiAdresi);
+    }
+    else if (secim == "8")
+    {
+        CsvDisaAktar(baglantiAdresi);
     }
     else if (secim == "0")
     {
@@ -378,6 +383,54 @@ static void AylikFiltrele(string baglantiAdresi)
     catch (Exception)
     {
         Console.WriteLine("\nHata: Gecerli bir yil veya ay numarasi girmelisiniz.");
+    }
+
+    Console.WriteLine("\nMenuye donmek icin bir tusa basin...");
+    Console.ReadKey();
+}
+static void CsvDisaAktar(string baglantiAdresi)
+{
+    Console.Clear();
+    Console.WriteLine("--- VERILERI CSV (EXCEL) OLARAK DISA AKTAR ---\n");
+
+    try
+    {
+        string masaustuYolu = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+        string dosyaYolu = Path.Combine(masaustuYolu, "FinansRaporu.csv");
+
+        SqlConnection baglanti = new SqlConnection(baglantiAdresi);
+        baglanti.Open();
+
+        string sorgu = @"SELECT t.TransactionId, t.TransactionDate, c.CategoryType, c.CategoryName, t.Amount, t.Description 
+                         FROM Transactions t
+                         INNER JOIN Categories c ON t.CategoryId = c.CategoryId
+                         ORDER BY t.TransactionDate DESC";
+
+        SqlCommand komut = new SqlCommand(sorgu, baglanti);
+        SqlDataReader okuyucu = komut.ExecuteReader();
+
+        StreamWriter yazici = new StreamWriter(dosyaYolu, false, System.Text.Encoding.UTF8);
+        yazici.WriteLine("ID;Tarih;Tur;Kategori;Tutar (TL);Aciklama");
+
+        int kayitSayisi = 0;
+
+        while (okuyucu.Read())
+        {
+            string tarih = Convert.ToDateTime(okuyucu["TransactionDate"]).ToString("dd.MM.yyyy HH:mm");
+            yazici.WriteLine($"{okuyucu["TransactionId"]};{tarih};{okuyucu["CategoryType"]};{okuyucu["CategoryName"]};{okuyucu["Amount"]};{okuyucu["Description"]}");
+            kayitSayisi++;
+        }
+
+        yazici.Close();
+        okuyucu.Close();
+        baglanti.Close();
+
+        Console.WriteLine($"Toplam {kayitSayisi} adet kayit basariyla disa aktarildi!");
+        Console.WriteLine("Dosya Konumu: " + dosyaYolu);
+    }
+    catch (Exception)
+    {
+        Console.WriteLine("Hata: Dosya olusturulurken bir sorun olustu.");
     }
 
     Console.WriteLine("\nMenuye donmek icin bir tusa basin...");
