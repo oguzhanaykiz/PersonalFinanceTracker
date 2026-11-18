@@ -15,6 +15,7 @@ while (true)
     Console.WriteLine("3 - Bakiye ve Harcama Ozetini Gor");
     Console.WriteLine("4 - Kategori Bazli Harcama Analizi");
     Console.WriteLine("5 - Kayit Sil");
+    Console.WriteLine("6 - Kayit Guncelle");
     Console.WriteLine("0 - Cikis");
     Console.WriteLine("-----------------------------------------");
     Console.Write("Seciminiz: ");
@@ -39,6 +40,10 @@ while (true)
     else if (secim == "5")
     {
         KayitSil(baglantiAdresi);
+    }
+    else if (secim == "6")
+    {
+        KayitGuncelle(baglantiAdresi);
     }
     else if (secim == "0")
     {
@@ -243,6 +248,59 @@ static void KayitSil(string baglantiAdresi)
     catch (Exception)
     {
         Console.WriteLine("\nHata: Gecerli bir ID numarasi girmelisiniz.");
+    }
+
+    Console.WriteLine("Menuye donmek icin bir tusa basin...");
+    Console.ReadKey();
+}
+static void KayitGuncelle(string baglantiAdresi)
+{
+    Console.Clear();
+    Console.WriteLine("--- KAYIT GUNCELLEME ---\n");
+
+    try
+    {
+        SqlConnection baglanti = new SqlConnection(baglantiAdresi);
+        baglanti.Open();
+
+        string listeSorgu = @"SELECT t.TransactionId, c.CategoryName, t.Amount, t.Description 
+                              FROM Transactions t
+                              INNER JOIN Categories c ON t.CategoryId = c.CategoryId";
+        SqlCommand listeKomut = new SqlCommand(listeSorgu, baglanti);
+        SqlDataReader okuyucu = listeKomut.ExecuteReader();
+
+        while (okuyucu.Read())
+        {
+            Console.WriteLine($"ID: {okuyucu["TransactionId"]} | {okuyucu["CategoryName"]} - {okuyucu["Amount"]} TL ({okuyucu["Description"]})");
+        }
+        okuyucu.Close();
+
+        Console.Write("\nGuncellemek istediginiz islemin ID numarasini girin: ");
+        int guncellenecekId = int.Parse(Console.ReadLine());
+
+        Console.Write("Yeni Tutar Girin (Ornek: 200,00): ");
+        decimal yeniTutar = decimal.Parse(Console.ReadLine());
+
+        Console.Write("Yeni Aciklama Girin: ");
+        string yeniAciklama = Console.ReadLine();
+
+        string guncelleSorgu = "UPDATE Transactions SET Amount = @tutar, Description = @aciklama WHERE TransactionId = @id";
+        SqlCommand guncelleKomut = new SqlCommand(guncelleSorgu, baglanti);
+        guncelleKomut.Parameters.AddWithValue("@tutar", yeniTutar);
+        guncelleKomut.Parameters.AddWithValue("@aciklama", yeniAciklama);
+        guncelleKomut.Parameters.AddWithValue("@id", guncellenecekId);
+
+        int etkilenenSatir = guncelleKomut.ExecuteNonQuery();
+        baglanti.Close();
+
+        if (etkilenenSatir > 0)
+            Console.WriteLine("\nKayit basariyla guncellendi!");
+        else
+            Console.WriteLine("\nBu ID numarasina ait kayit bulunamadi.");
+    }
+    catch (Exception)
+    {
+        Console.WriteLine("\nHata: Girdiginiz bilgileri kontrol edin.");
     }
 
     Console.WriteLine("Menuye donmek icin bir tusa basin...");
