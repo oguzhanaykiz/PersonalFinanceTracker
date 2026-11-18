@@ -16,6 +16,7 @@ while (true)
     Console.WriteLine("4 - Kategori Bazli Harcama Analizi");
     Console.WriteLine("5 - Kayit Sil");
     Console.WriteLine("6 - Kayit Guncelle");
+    Console.WriteLine("7 - Aylik Islem Filtreleme");
     Console.WriteLine("0 - Cikis");
     Console.WriteLine("-----------------------------------------");
     Console.Write("Seciminiz: ");
@@ -44,6 +45,10 @@ while (true)
     else if (secim == "6")
     {
         KayitGuncelle(baglantiAdresi);
+    }
+    else if (secim == "7")
+    {
+        AylikFiltrele(baglantiAdresi);
     }
     else if (secim == "0")
     {
@@ -304,5 +309,77 @@ static void KayitGuncelle(string baglantiAdresi)
     }
 
     Console.WriteLine("Menuye donmek icin bir tusa basin...");
+    Console.ReadKey();
+}
+static void AylikFiltrele(string baglantiAdresi)
+{
+    Console.Clear();
+    Console.WriteLine("--- AYLIK ISLEM FILTRELEME ---\n");
+
+    try
+    {
+        Console.Write("Yil Girin (Ornek: 2026): ");
+        int yil = int.Parse(Console.ReadLine());
+
+        Console.Write("Ay Girin (1-12 arasi): ");
+        int ay = int.Parse(Console.ReadLine());
+
+        SqlConnection baglanti = new SqlConnection(baglantiAdresi);
+        baglanti.Open();
+
+        string sorgu = @"SELECT t.TransactionId, c.CategoryName, c.CategoryType, t.Amount, t.Description, t.TransactionDate 
+                         FROM Transactions t
+                         INNER JOIN Categories c ON t.CategoryId = c.CategoryId
+                         WHERE YEAR(t.TransactionDate) = @yil AND MONTH(t.TransactionDate) = @ay
+                         ORDER BY t.TransactionDate DESC";
+
+        SqlCommand komut = new SqlCommand(sorgu, baglanti);
+        komut.Parameters.AddWithValue("@yil", yil);
+        komut.Parameters.AddWithValue("@ay", ay);
+
+        SqlDataReader okuyucu = komut.ExecuteReader();
+
+        decimal aylikGelir = 0;
+        decimal aylikGider = 0;
+        bool kayitVarMi = false;
+
+        Console.WriteLine($"\n--- {ay}.{yil} DONEMI ISLEMLERI ---");
+
+        while (okuyucu.Read())
+        {
+            kayitVarMi = true;
+            string tarih = Convert.ToDateTime(okuyucu["TransactionDate"]).ToString("dd.MM.yyyy HH:mm");
+            string tur = okuyucu["CategoryType"].ToString();
+            decimal tutar = Convert.ToDecimal(okuyucu["Amount"]);
+
+            if (tur == "Gelir")
+                aylikGelir += tutar;
+            else if (tur == "Gider")
+                aylikGider += tutar;
+
+            Console.WriteLine($"ID: {okuyucu["TransactionId"]} | [{tarih}] {tur} - {okuyucu["CategoryName"]} : {tutar} TL ({okuyucu["Description"]})");
+        }
+
+        okuyucu.Close();
+        baglanti.Close();
+
+        if (!kayitVarMi)
+        {
+            Console.WriteLine("Secilen ay ve yila ait kayit bulunamadi.");
+        }
+        else
+        {
+            Console.WriteLine("\n-----------------------------");
+            Console.WriteLine($"Secilen Ay Toplam Gelir : {aylikGelir} TL");
+            Console.WriteLine($"Secilen Ay Toplam Gider : {aylikGider} TL");
+            Console.WriteLine($"Secilen Ay Net Durum    : {aylikGelir - aylikGider} TL");
+        }
+    }
+    catch (Exception)
+    {
+        Console.WriteLine("\nHata: Gecerli bir yil veya ay numarasi girmelisiniz.");
+    }
+
+    Console.WriteLine("\nMenuye donmek icin bir tusa basin...");
     Console.ReadKey();
 }
